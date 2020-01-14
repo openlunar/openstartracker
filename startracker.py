@@ -15,7 +15,7 @@ import cv2
 import numpy as np
 from io import StringIO, BytesIO
 import fcntl
-import beast
+from beast import beast
 from systemd import daemon
 
 P_MATCH_THRESH = 0.99
