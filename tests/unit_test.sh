@@ -52,33 +52,36 @@ shift
 
 KILLPID=""
 if [[ $ESA_TEST == 1 ]]; then
+	echo "[INFO] Making local test files"
 	make || exit
 fi
 if [[ $IMG_TEST == 1 ]]; then
+	echo "[INFO] Making Beast files / swig"
 	pushd ../beast >/dev/null
 	make || exit
 	popd>/dev/null
 fi
 if [[ $CALIBRATE == 1 ]]; then
-	echo "Calibrating..."
+	echo "[INFO] Calibrating..."
 	time $PYTHON calibrate.py $TESTDIR || exit
 fi
 if [[ $REGENERATE == 1 ]]; then
-	echo "Regenerating..."
+	echo "[INFO] Regenerating..."
 	time $PYTHON simulator.py $TESTDIR/calibration.txt $TESTDIR/input.csv $TESTDIR/result.csv || exit
 fi
 
 if [[ $ESA_TEST == 1 ]]; then
-	echo "ESA test..."
+	echo "[INFO] ESA test..."
 	make &&
 	time $@ ./test $TESTDIR/input.csv $TESTDIR/calibration.txt 1991.25 | tee $TESTDIR/result_real.csv &&
 	gprof test | gprof2dot -s | dot -Tpdf -o test.pdf &&
-	echo "camera coverage simulation percent:" &&
+	echo "[INFO] camera coverage simulation percent:" &&
 	echo "100-`diff --suppress-common-lines --speed-large-files -y $TESTDIR/result.csv $TESTDIR/result_real.csv | wc -l`/1" | bc -l &&
 	$PYTHON score.py $TESTDIR/result.csv $TESTDIR/result_real.csv 
 fi
 
 if [[ $IMG_TEST == 1 ]]; then
+	echo "[INFO] Running Startracker"
 	$@ $PYTHON startracker.py $TESTDIR/calibration.txt 1991.25 $TESTDIR/median_image.png &
 	KILLPID="$!"
 	sleep 10
@@ -86,13 +89,15 @@ if [[ $IMG_TEST == 1 ]]; then
 	echo "rgb.solve_image('$TESTDIR/median_image.png')" | nc 127.0.0.1 8010
 	sleep 0.5
 	for i in $TESTDIR/samples/*; do
+		echo "INFO: running startracker.py on '$i' "
 		echo "rgb.solve_image('$i')" | nc 127.0.0.1 8010
 		sleep 0.5
 		echo "rgb.solve_image('$i')" | nc 127.0.0.1 8010
 		sleep 0.5
 	done
-  #sleep 0.5
-  #echo 'exception test' | nc 127.0.0.1 8010
+	echo "[INFO] ostensably done with startracker runs. : quittting"
+  sleep 0.5
+  echo 'exception test' | nc 127.0.0.1 8010
   sleep 0.5
 	echo 'quit()' | nc 127.0.0.1 8010
 fi
