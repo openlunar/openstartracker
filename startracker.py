@@ -17,6 +17,7 @@ from io import StringIO, BytesIO
 import fcntl
 from beast import beast
 from systemd import daemon
+import argparse
 
 P_MATCH_THRESH = 0.99
 SIMULATE = 0
@@ -30,8 +31,7 @@ def trace(frame, event, arg):
           (event, frame.f_code.co_filename, frame.f_lineno), file=sys.stderr)
     return trace
 
-CONFIGFILE = sys.argv[1]
-YEAR = float(sys.argv[2])
+
 
 # set up server before we do anything else
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -629,7 +629,23 @@ class connection:
             del CONNECTIONS[self.fd]
 
 
-def main():
+def parse_args():
+    """Parse args.
+
+    from
+    CONFIGFILE = sys.argv[1]
+    YEAR = float(sys.argv[2])
+    """
+    parser = argparse.ArgumentParser(description="""
+           Starcam solver entrypoint.
+
+        """)
+    parser.add_argument('--configfile', action="store", dest="CONFIGFILE")
+    parser.add_argument('--year', action="store", dest="YEAR", type=int)
+    parser.add_argument('--timeout', action="store", dest="WATCHDOG_USEC", type=int)
+    return parser.parse_args()
+
+def main(arguments):
     """It is a main.
 
     arguments are passed in via env vars currently;

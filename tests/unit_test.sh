@@ -56,7 +56,7 @@ if [[ $ESA_TEST == 1 ]]; then
 fi
 if [[ $IMG_TEST == 1 ]]; then
 	pushd ../beast >/dev/null
-	./go || exit
+	make || exit
 	popd>/dev/null
 fi
 if [[ $CALIBRATE == 1 ]]; then
