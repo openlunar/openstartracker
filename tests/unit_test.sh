@@ -82,7 +82,7 @@ fi
 
 if [[ $IMG_TEST == 1 ]]; then
 	echo "[INFO] Running Startracker"
-	$@ $PYTHON startracker.py $TESTDIR/calibration.txt 1991.25 $TESTDIR/median_image.png &
+	$@ $PYTHON startracker.py --configfile $TESTDIR/calibration.txt --year 1991 --camera $TESTDIR/median_image.png &
 	KILLPID="$!"
 	sleep 10
 	#make sure we dont crash when given an image w/ no stars

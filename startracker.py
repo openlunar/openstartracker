@@ -32,7 +32,7 @@ def trace(frame, event, arg):
     return trace
 
 
-def setup(CONFIGFILE):
+def setup(CONFIGFILE, YEAR):
     """Set up server before we do anything else."""
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -650,7 +650,7 @@ def main(args):
     arguments are passed in via env vars currently;
         WATCHDOG_USEC = 3000000
     """
-    setup(args.CONFIGFILE )
+    setup(args.CONFIGFILE, args.YEAR )
     rgb = StarCamera(args.CAM)
     ir = science_camera(args.CAM)
 
