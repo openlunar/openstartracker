@@ -60,6 +60,7 @@ def setup(CONFIGFILE, YEAR):
     print ("Generating DB")
     C_DB = beast.constellation_db(S_FILTERED, 2 + beast.cvar.DB_REDUNDANCY, 0)
     print ("Ready")
+    return server
 
 
 def a2q(att):
@@ -650,7 +651,7 @@ def main(args):
     arguments are passed in via env vars currently;
         WATCHDOG_USEC = 3000000
     """
-    setup(args.CONFIGFILE, args.YEAR )
+    server = setup(args.CONFIGFILE, args.YEAR)
     rgb = StarCamera(args.CAM)
     ir = science_camera(args.CAM)
 
