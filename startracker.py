@@ -548,10 +548,7 @@ class science_camera:
         else:
             os.write(1, os.path.abspath(NONSTAR_DATAFILENAME))
 
-rgb = StarCamera(sys.argv[3])
-ir = science_camera(sys.argv[3])
 
-CONNECTIONS = {}
 
 
 class connection:
@@ -643,6 +640,7 @@ def parse_args():
     parser.add_argument('--configfile', action="store", dest="CONFIGFILE")
     parser.add_argument('--year', action="store", dest="YEAR", type=int)
     parser.add_argument('--timeout', action="store", dest="WATCHDOG_USEC", type=int)
+    parser.add_argument('--camera', action="store", dest="CAM")
     return parser.parse_args()
 
 
@@ -652,7 +650,12 @@ def main(args):
     arguments are passed in via env vars currently;
         WATCHDOG_USEC = 3000000
     """
-    setup(args.configfile, )
+    setup(args.CONFIGFILE )
+    rgb = StarCamera(args.CAM)
+    ir = science_camera(args.CAM)
+
+    CONNECTIONS = {}
+
     epoll = select.epoll()
     epoll.register(server.fileno(), select.EPOLLIN)
 
