@@ -32,34 +32,34 @@ def trace(frame, event, arg):
     return trace
 
 
+def setup(CONFIGFILE):
+    """Set up server before we do anything else."""
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    try:
+        server.bind(('127.0.0.1', 8010))
+    except:
+        print("server socket already open: try terminal command: "
+              "sudo kill $(sudo lsof -t -i:8010)")
+        exit()
 
-# set up server before we do anything else
-server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-try:
-    server.bind(('127.0.0.1', 8010))
-except:
-    print("server socket already open: try terminal command: "
-          "sudo kill $(sudo lsof -t -i:8010)")
-    exit()
+    server.listen(5)
+    server.setblocking(0)
 
-server.listen(5)
-server.setblocking(0)
-
-print("Loading config")
-print (CONFIGFILE)
-beast.load_config(CONFIGFILE)
-print ("Loading hip_main.dat")
-S_DB = beast.star_db()
-S_DB.load_catalog("hip_main.dat", YEAR)
-print ("Filtering stars")
-SQ_RESULTS = beast.star_query(S_DB)
-SQ_RESULTS.kdmask_filter_catalog()
-SQ_RESULTS.kdmask_uniform_density(beast.cvar.REQUIRED_STARS)
-S_FILTERED = SQ_RESULTS.from_kdmask()
-print ("Generating DB")
-C_DB = beast.constellation_db(S_FILTERED, 2 + beast.cvar.DB_REDUNDANCY, 0)
-print ("Ready")
+    print("Loading config")
+    print (CONFIGFILE)
+    beast.load_config(CONFIGFILE)
+    print ("Loading hip_main.dat")
+    S_DB = beast.star_db()
+    S_DB.load_catalog("hip_main.dat", YEAR)
+    print ("Filtering stars")
+    SQ_RESULTS = beast.star_query(S_DB)
+    SQ_RESULTS.kdmask_filter_catalog()
+    SQ_RESULTS.kdmask_uniform_density(beast.cvar.REQUIRED_STARS)
+    S_FILTERED = SQ_RESULTS.from_kdmask()
+    print ("Generating DB")
+    C_DB = beast.constellation_db(S_FILTERED, 2 + beast.cvar.DB_REDUNDANCY, 0)
+    print ("Ready")
 
 
 def a2q(att):
@@ -645,12 +645,14 @@ def parse_args():
     parser.add_argument('--timeout', action="store", dest="WATCHDOG_USEC", type=int)
     return parser.parse_args()
 
-def main(arguments):
+
+def main(args):
     """It is a main.
 
     arguments are passed in via env vars currently;
         WATCHDOG_USEC = 3000000
     """
+    setup(args.configfile, )
     epoll = select.epoll()
     epoll.register(server.fileno(), select.EPOLLIN)
 
@@ -702,4 +704,5 @@ def main(arguments):
 
 
 if __name__ == "__main__":
-    main()
+    args = parse_args()
+    main(args)
