@@ -135,7 +135,7 @@ int main(int argc, char* argv[])
 		time_sum += end - start;
 		for(i = 0; i < length; i++) printf("%d%c", results[i], i == length - 1 ? '\n' : ',');
 		run_times++;
-		fprintf(stderr,"Time on edison: %f\n", ((float)time_sum*EDISON_SPEED_FACTOR) / (CLOCKS_PER_SEC*run_times));
+		fprintf(stderr,"Time: %f\n", ((float)time_sum / (CLOCKS_PER_SEC*run_times)));
 	}
 
 	free(line);
