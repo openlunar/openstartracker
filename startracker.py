@@ -484,6 +484,7 @@ class StarCamera:
         self.median_image = cv2.imread(median_file)
 
     def solve_image(self, imagefile, lis=1, quiet=0):
+        print("[DEBUG] Entering Solve_image")
         starttime = time()
         if SIMULATE == 1 and quiet == 0:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -645,8 +646,11 @@ def parse_args():
         """)
     parser.add_argument('--configfile', action="store", dest="CONFIGFILE")
     parser.add_argument('--year', action="store", dest="YEAR", type=int)
-    parser.add_argument('--timeout', action="store", dest="WATCHDOG_USEC", type=int)
+    parser.add_argument('--timeout', action="store",
+                        dest="WATCHDOG_USEC", type=int)
     parser.add_argument('--camera', action="store", dest="CAM")
+    parser.add_argument('--crop-size', action="store",
+                        type=int, dest="CROP_SIZE")
     return parser.parse_args()
 
 
@@ -680,13 +684,15 @@ def main(args):
                 (last_ping + float(os.environ['WATCHDOG_USEC']) / 2.0e6)):
             daemon.notify("WATCHDOG=1")
             last_ping = time()
-        # events = epoll.poll()
         for fd, event_type in events:
             # Activity on the master socket means a new connection.
+            print("[DEBUG] Activity on socket")
             if fd == server.fileno():
+                print("[DEBUG] fd matches server.fileno")
                 conn, addr = server.accept()
                 connection(conn, epoll)
             elif fd in CONNECTIONS:
+                print("[DEBUG] reading from connection")
                 w = CONNECTIONS[fd]
                 data = w.read()
                 print(data.decode(encoding='UTF-8'), file=sys.stderr)
