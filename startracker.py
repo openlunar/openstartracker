@@ -19,6 +19,8 @@ from beast import beast
 from systemd import daemon
 import argparse
 
+
+CONNECTIONS = {}
 P_MATCH_THRESH = 0.99
 SIMULATE = 0
 if 'WATCHDOG_USEC' not in os.environ:
@@ -171,6 +173,7 @@ def print_ori(body2eci):
 
 class star_image:
     def __init__(self, imagefile, median_image):
+        print("[DEBUG]: ENTERING Star_image init for %s", imagefile)
         b_conf = [time(), beast.cvar.PIXSCALE, beast.cvar.BASE_FLUX]
         self.img_stars = beast.star_db()
         self.img_data = []
@@ -186,6 +189,7 @@ class star_image:
         # TODO: improve memory efficiency?? SG012019 BY WHOM?
         if "://" in imagefile:
             import urllib
+            print("[INFO]: downloading file %s", imagefile)
             img = cv2.imdecode(
                 np.asarray(
                     bytearray(
@@ -193,11 +197,12 @@ class star_image:
                     dtype="uint8"),
                 cv2.IMREAD_COLOR)
         else:
+            print("[INFO]: opening local")
             img = cv2.imread(imagefile)
         if img is None:
             print ("Invalid image, using blank dummy image", file=sys.stderr)
             img = median_image
-
+        print("[DEBUG]: Image is %s by %s", img.cols(), img.rows())
         img = np.clip(
             img.astype(np.int16) - median_image,
             a_min=0,
