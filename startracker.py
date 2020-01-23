@@ -576,7 +576,6 @@ class connection:
         self.fd = self.conn.fileno()
         epoll.register(self.fd, select.EPOLLIN)
         self.epoll = epoll
-        CONNECTIONS[self.fd] = self
         
     def read(self):
         """
@@ -633,8 +632,6 @@ class connection:
         """Close connection with file descriptor."""
         self.epoll.unregister(self.fd)
         self.conn.close()
-        if CONNECTIONS[self.fd]:
-            del CONNECTIONS[self.fd]
 
 
 def parse_args():
@@ -668,7 +665,7 @@ def main(args):
     rgb = StarCamera(args.CAM, const_db, sq_results)
     ir = science_camera(args.CAM)
 
-    CONNECTIONS = {}
+    connections = {}
 
     epoll = select.epoll()
     epoll.register(server.fileno(), select.EPOLLIN)
@@ -694,10 +691,10 @@ def main(args):
             if fd == server.fileno():
                 print("[DEBUG] fd matches server.fileno")
                 conn, addr = server.accept()
-                CONNECTIONS[fd] = connection(conn, epoll)
-            if fd in CONNECTIONS:
+                connections[fd] = connection(conn, epoll)
+            if fd in connections:
                 print("[DEBUG] reading from connection")
-                w = CONNECTIONS[fd]
+                w = connections[fd]
                 data = w.read()
                 print(data.decode(encoding='UTF-8'), file=sys.stderr)
                 if len(data) > 0:
