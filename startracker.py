@@ -59,7 +59,7 @@ def setup(CONFIGFILE, YEAR):
     sq_results.kdmask_uniform_density(beast.cvar.REQUIRED_STARS)
     s_filtered = sq_results.from_kdmask()
     print ("Generating DB")
-    C_DB = beast.constellation_db(S_FILTERED, 2 + beast.cvar.DB_REDUNDANCY, 0)
+    C_DB = beast.constellation_db(s_filtered, 2 + beast.cvar.DB_REDUNDANCY, 0)
     print ("Ready")
     return (server, C_DB, S_DB, sq_results, s_filtered)
 
@@ -664,7 +664,7 @@ def main(args):
     arguments are passed in via env vars currently;
         WATCHDOG_USEC = 3000000
     """
-    (server, const_db , S_DB, sq_results, s_filtered) = setup(args.CONFIGFILE, args.YEAR)
+    (server, const_db, S_DB, sq_results, s_filtered) = setup(args.CONFIGFILE, args.YEAR)
     rgb = StarCamera(args.CAM, const_db, sq_results)
     ir = science_camera(args.CAM)
 
