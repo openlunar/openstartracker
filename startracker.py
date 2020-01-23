@@ -20,7 +20,6 @@ from systemd import daemon
 import argparse
 
 
-CONNECTIONS = {}
 P_MATCH_THRESH = 0.99
 SIMULATE = 0
 if 'WATCHDOG_USEC' not in os.environ:
@@ -55,14 +54,14 @@ def setup(CONFIGFILE, YEAR):
     S_DB = beast.star_db()
     S_DB.load_catalog("hip_main.dat", YEAR)
     print ("Filtering stars")
-    SQ_RESULTS = beast.star_query(S_DB)
-    SQ_RESULTS.kdmask_filter_catalog()
-    SQ_RESULTS.kdmask_uniform_density(beast.cvar.REQUIRED_STARS)
-    S_FILTERED = SQ_RESULTS.from_kdmask()
+    sq_results = beast.star_query(S_DB)
+    sq_results.kdmask_filter_catalog()
+    sq_results.kdmask_uniform_density(beast.cvar.REQUIRED_STARS)
+    s_filtered = sq_results.from_kdmask()
     print ("Generating DB")
     C_DB = beast.constellation_db(S_FILTERED, 2 + beast.cvar.DB_REDUNDANCY, 0)
     print ("Ready")
-    return server
+    return server, C_DB, S_DB, sq_results, s_filtered)
 
 
 def a2q(att):
@@ -172,7 +171,7 @@ def print_ori(body2eci):
 
 
 class star_image:
-    def __init__(self, imagefile, median_image):
+    def __init__(self, imagefile, median_image, const_db, sq_results):
         print("[DEBUG]: ENTERING Star_image init for %s", imagefile)
         b_conf = [time(), beast.cvar.PIXSCALE, beast.cvar.BASE_FLUX]
         self.img_stars = beast.star_db()
@@ -181,6 +180,8 @@ class star_image:
         self.db_stars = None
         self.match_from_lm = None
         self.db_stars_from_lm = None
+        self.C_DB = const_db
+        self.sq_results = sq_results
 
         # Placeholders so that these don't get garbage collected by SWIG
         self.fov_db = None
@@ -202,7 +203,7 @@ class star_image:
         if img is None:
             print ("Invalid image, using blank dummy image", file=sys.stderr)
             img = median_image
-        print("[DEBUG]: Image is %s by %s", img.cols(), img.rows())
+        print("[DEBUG]: Image is %s=", img.shape)
         img = np.clip(
             img.astype(np.int16) - median_image,
             a_min=0,
@@ -245,18 +246,18 @@ class star_image:
                                                        )[0, 0].tolist())
 
     def match_near(self, x, y, z, r):
-        SQ_RESULTS.kdsearch(x, y, z, r,
-                            beast.cvar.THRESH_FACTOR *
-                            beast.cvar.IMAGE_VARIANCE)
+        self.sq_results.kdsearch(x, y, z, r,
+                                 beast.cvar.THRESH_FACTOR *
+                                 beast.cvar.IMAGE_VARIANCE)
         # estimate density for constellation generation
-        C_DB.results.kdsearch(x, y, z, r,
-                              beast.cvar.THRESH_FACTOR *
-                              beast.cvar.IMAGE_VARIANCE)
+        self.C_DB.results.kdsearch(x, y, z, r,
+                                   beast.cvar.THRESH_FACTOR *
+                                   beast.cvar.IMAGE_VARIANCE)
         fov_stars = SQ_RESULTS.from_kdresults()
         self.fov_db = beast.constellation_db(fov_stars,
-                                             C_DB.results.r_size(),
+                                             self.C_DB.results.r_size(),
                                              1)
-        C_DB.results.clear_kdresults()
+        self.C_DB.results.clear_kdresults()
         SQ_RESULTS.clear_kdresults()
 
         img_const = beast.constellation_db(self.img_stars,
@@ -278,7 +279,7 @@ class star_image:
             beast.constellation_db(img_stars_n_brightest,
                                    beast.cvar.MAX_FALSE_STARS + 2,
                                    1)
-        lis = beast.db_match(C_DB, img_const_n_brightest)
+        lis = beast.db_match(self.C_DB, img_const_n_brightest)
         # TODO: uncomment once p_match is fixed
         # if lis.p_match>P_MATCH_THRESH:
         if (lis.p_match > P_MATCH_THRESH and
@@ -477,11 +478,13 @@ def winner_attitude(w):
 class StarCamera:
     """Definition for camera hardware and image source."""
 
-    def __init__(self, median_file, source="RGB"):
+    def __init__(self, median_file, source="RGB", const_db, sq_results):
         self.source = source
         self.current_image = None
         self.last_match = None
         self.median_image = cv2.imread(median_file)
+        self.const_db = const_db
+        self.sq_results = sq_results
 
     def solve_image(self, imagefile, lis=1, quiet=0):
         print("[DEBUG] Entering Solve_image")
@@ -492,7 +495,8 @@ class StarCamera:
             data = s.recv(2048)
             s.close()
         print("Time1: " + str(time() - starttime), file=sys.stderr)
-        self.current_image = star_image(imagefile, self.median_image)
+        self.current_image = star_image(imagefile, self.median_image,
+                                        const_db, sq_results)
         print("Time2: " + str(time() - starttime), file=sys.stderr)
         if (lis == 1):
             self.current_image.match_lis()
@@ -660,8 +664,8 @@ def main(args):
     arguments are passed in via env vars currently;
         WATCHDOG_USEC = 3000000
     """
-    server = setup(args.CONFIGFILE, args.YEAR)
-    rgb = StarCamera(args.CAM)
+    (server, const_db , S_DB, sq_results, s_filtered) = setup(args.CONFIGFILE, args.YEAR)
+    rgb = StarCamera(args.CAM, const_db, sq_results)
     ir = science_camera(args.CAM)
 
     CONNECTIONS = {}
@@ -691,7 +695,7 @@ def main(args):
                 print("[DEBUG] fd matches server.fileno")
                 conn, addr = server.accept()
                 CONNECTIONS[fd] = connection(conn, epoll)
-            elif fd in CONNECTIONS:
+            if fd in CONNECTIONS:
                 print("[DEBUG] reading from connection")
                 w = CONNECTIONS[fd]
                 data = w.read()
