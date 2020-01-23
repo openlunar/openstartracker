@@ -573,7 +573,7 @@ class connection:
         epoll.register(self.fd, select.EPOLLIN)
         self.epoll = epoll
         CONNECTIONS[self.fd] = self
-
+        
     def read(self):
         """
         Complete non-blocking read on file descriptor.
@@ -690,7 +690,7 @@ def main(args):
             if fd == server.fileno():
                 print("[DEBUG] fd matches server.fileno")
                 conn, addr = server.accept()
-                connection(conn, epoll)
+                CONNECTIONS[fd] = connection(conn, epoll)
             elif fd in CONNECTIONS:
                 print("[DEBUG] reading from connection")
                 w = CONNECTIONS[fd]
