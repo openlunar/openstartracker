@@ -253,18 +253,18 @@ class star_image:
         self.C_DB.results.kdsearch(x, y, z, r,
                                    beast.cvar.THRESH_FACTOR *
                                    beast.cvar.IMAGE_VARIANCE)
-        fov_stars = SQ_RESULTS.from_kdresults()
+        fov_stars = self.sq_results.from_kdresults()
         self.fov_db = beast.constellation_db(fov_stars,
                                              self.C_DB.results.r_size(),
                                              1)
         self.C_DB.results.clear_kdresults()
-        SQ_RESULTS.clear_kdresults()
+        self.sq_results.clear_kdresults()
 
         img_const = beast.constellation_db(self.img_stars,
                                            beast.cvar.MAX_FALSE_STARS + 2,
                                            1)
         near = beast.db_match(self.fov_db, img_const)
-        if near.p_match > P_MATCH_THRESH:
+        if near.p_match > 0.99:
             self.match = near
             self.db_stars = near.winner.from_match()
 
