@@ -61,7 +61,7 @@ def setup(CONFIGFILE, YEAR):
     print ("Generating DB")
     C_DB = beast.constellation_db(S_FILTERED, 2 + beast.cvar.DB_REDUNDANCY, 0)
     print ("Ready")
-    return server, C_DB, S_DB, sq_results, s_filtered)
+    return (server, C_DB, S_DB, sq_results, s_filtered)
 
 
 def a2q(att):
@@ -478,7 +478,7 @@ def winner_attitude(w):
 class StarCamera:
     """Definition for camera hardware and image source."""
 
-    def __init__(self, median_file, source="RGB", const_db, sq_results):
+    def __init__(self, median_file, const_db, sq_results, source="RGB"):
         self.source = source
         self.current_image = None
         self.last_match = None
