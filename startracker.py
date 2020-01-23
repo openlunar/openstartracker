@@ -339,7 +339,7 @@ class star_image:
             s_db = db.get_star(i)
             if (s_db.id >= 0):
                 weight = 1.0 / (s_db.sigma_sq + s_im.sigma_sq)
-                temp = np.dot(bodyCorrection,
+                temp = np.dot(body_correction,
                               np.array([[s_im.x], [s_im.y], [s_im.z]]))
                 star_out.append(str(temp[0, 0]) + ',' +
                                 str(temp[1, 0]) + ',' +
