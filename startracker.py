@@ -496,7 +496,7 @@ class StarCamera:
             s.close()
         print("Time1: " + str(time() - starttime), file=sys.stderr)
         self.current_image = star_image(imagefile, self.median_image,
-                                        const_db, sq_results)
+                                        self.const_db, self.sq_results)
         print("Time2: " + str(time() - starttime), file=sys.stderr)
         if (lis == 1):
             self.current_image.match_lis()
