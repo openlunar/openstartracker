@@ -119,40 +119,6 @@ def extrapolate_matrix(A, B, t1, t2, t3):
     return (c, (1000000.0) * angles_ab / (t2 - t1))
 
 
-# Note: SWIG's policy is to garbage collect objects created with
-# constructors, but not objects created by returning from a function
-
-
-def wahba(A, B, weight=[]):
-    """
-    Take in two matrices of points and finds the attitude matrix needed to.
-
-    transform one onto the other.
-
-    Input:
-        A: nx3 matrix - x,y,z in body frame
-        B: nx3 matrix - x,y,z in eci
-        Note: the "n" dimension of both matrices must match
-    Output:
-        attitude_matrix: returned as a numpy matrix
-    """
-    assert len(A) == len(B)
-    if (len(weight) == 0):
-        weight = np.array([1] * len(A))
-    # dot is matrix multiplication for array
-    H = np.dot(np.transpose(A) * weight, B)
-
-    # calculate attitude matrix
-    # from http://malcolmdshuster.com/FC_MarkleyMortari_Girdwood_1999_AAS.pdf
-    U, S, Vt = np.linalg.svd(H)
-    flip = np.linalg.det(U) * np.linalg.det(Vt)
-
-    U[:, 2] *= flip
-
-    body2eci = np.dot(U, Vt)
-    return body2eci
-
-
 def print_ori(body2eci):
     """Print the orientation angles."""
     # rotation about the y axis (-90 to +90)
@@ -170,8 +136,11 @@ def print_ori(body2eci):
     print ("ORIENTATION=" + str(orientation), file=sys.stderr)
 
 
-class star_image:
-    def __init__(self, imagefile, median_image, const_db, sq_results):
+class StarImage:
+    """Image of the starfield"""
+    def __init__(self, imagefile, median_image, const_db, sq_results,
+                 source="RGB", crop=None):
+        """Setup starimage, with the globals and a source."""
         print("[DEBUG]: ENTERING Star_image init for %s", imagefile)
         b_conf = [time(), beast.cvar.PIXSCALE, beast.cvar.BASE_FLUX]
         self.img_stars = beast.star_db()
@@ -182,6 +151,8 @@ class star_image:
         self.db_stars_from_lm = None
         self.C_DB = const_db
         self.sq_results = sq_results
+        self.source = source
+        self.crop = crop
 
         # Placeholders so that these don't get garbage collected by SWIG
         self.fov_db = None
@@ -199,20 +170,28 @@ class star_image:
                 cv2.IMREAD_COLOR)
         else:
             print("[INFO]: opening local")
-            img = cv2.imread(imagefile)
+            if self.source == "RGB":
+                img = cv2.imread(imagefile)
+            else:
+                img = cv2.imread(imagefile, cv2.IMREAD_GRAYSCALE)
         if img is None:
             print ("Invalid image, using blank dummy image", file=sys.stderr)
             img = median_image
+        if self.crop is not None:
+            print("[DEBUG]: Cropping Image")
+            img = crop(img, self.crop)
         print("[DEBUG]: Image is %s=", img.shape)
         img = np.clip(
             img.astype(np.int16) - median_image,
             a_min=0,
             a_max=255).astype(np.uint8)
-        img_grey = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+        if self.source == "RGB":
+            img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+
 
         # removes areas of the image that don't meet our brightness threshold
         ret, thresh = cv2.threshold(
-            img_grey,
+            img,
             beast.cvar.THRESH_FACTOR * beast.cvar.IMAGE_VARIANCE,
             255,
             cv2.THRESH_BINARY)
@@ -234,7 +213,7 @@ class star_image:
                 # the brightest pixel
                 self.img_stars += beast.star(cx - beast.cvar.IMG_X / 2.0,
                                              (cy - beast.cvar.IMG_Y / 2.0),
-                                             float(cv2.getRectSubPix(img_grey,
+                                             float(cv2.getRectSubPix(img,
                                                    (1, 1),
                                                    (cx, cy))[0, 0]),
                                              -1)
@@ -479,6 +458,7 @@ class StarCamera:
     """Definition for camera hardware and image source."""
 
     def __init__(self, median_file, const_db, sq_results, source="RGB"):
+        """Constructor."""
         self.source = source
         self.current_image = None
         self.last_match = None
@@ -487,6 +467,7 @@ class StarCamera:
         self.sq_results = sq_results
 
     def solve_image(self, imagefile, lis=1, quiet=0):
+        """The solver per image."""
         print("[DEBUG] Entering Solve_image")
         starttime = time()
         if SIMULATE == 1 and quiet == 0:
@@ -495,8 +476,9 @@ class StarCamera:
             data = s.recv(2048)
             s.close()
         print("Time1: " + str(time() - starttime), file=sys.stderr)
-        self.current_image = star_image(imagefile, self.median_image,
-                                        self.const_db, self.sq_results)
+        self.current_image = StarImage(imagefile, self.median_image,
+                                       self.const_db, self.sq_results,
+                                       crop=1000, source=self.source)
         print("Time2: " + str(time() - starttime), file=sys.stderr)
         if (lis == 1):
             self.current_image.match_lis()
@@ -519,7 +501,6 @@ class StarCamera:
         print("Time6: " + str(time() - starttime), file=sys.stderr)
 
     def extrapolate_image(self, imagefile1, imagefile2, time1, time2):
-        # self.solve_image(imagefile2,lis=1,quiet=0)
         self.solve_image(imagefile1, lis=1, quiet=1)
         print(1, file=sys.stderr)
         if (self.last_match is None):
@@ -634,6 +615,16 @@ class connection:
         self.conn.close()
 
 
+def crop(img, crop_size):
+    """Crop down to a square image at the center of the image."""
+    row, col = img.shape
+    rcenter = int(row / 2)
+    ccenter = int(col / 2)
+    crop_int = int(crop_size / 2)
+    return img[rcenter - crop_int:rcenter + crop_int,
+               ccenter - crop_int:ccenter + crop_int]
+
+
 def parse_args():
     """Parse args.
 
@@ -651,7 +642,7 @@ def parse_args():
                         dest="WATCHDOG_USEC", type=int)
     parser.add_argument('--camera', action="store", dest="CAM")
     parser.add_argument('--crop-size', action="store",
-                        type=int, dest="CROP_SIZE")
+                        type=int, dest="CROP_SIZE", default=1000)
     return parser.parse_args()
 
 
@@ -661,9 +652,9 @@ def main(args):
     arguments are passed in via env vars currently;
         WATCHDOG_USEC = 3000000
     """
-    (server, const_db, S_DB, sq_results, s_filtered) = setup(args.CONFIGFILE, args.YEAR)
-    rgb = StarCamera(args.CAM, const_db, sq_results)
-    ir = science_camera(args.CAM)
+    (server, const_db, S_DB, sq_results, s_filtered) = setup(args.CONFIGFILE,
+                                                             args.YEAR)
+    rgb = StarCamera(args.CAM, const_db, sq_results, source="FLIR")
 
     connections = {}
 
@@ -687,7 +678,6 @@ def main(args):
             last_ping = time()
         for fd, event_type in events:
             # Activity on the master socket means a new connection.
-            print("[DEBUG] Activity on socket")
             if fd == server.fileno():
                 print("[DEBUG] fd matches server.fileno")
                 conn, addr = server.accept()
@@ -715,6 +705,7 @@ def main(args):
                     data_out = stdout_redir.getvalue()
                     print(data_out, file=sys.stderr)
                     w.write(data_out)
+                    w.close()
                 else:
                     w.close()
 
