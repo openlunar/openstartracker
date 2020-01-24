@@ -179,7 +179,7 @@ class StarImage:
             img = median_image
         if self.crop is not None:
             print("[DEBUG]: Cropping Image")
-            img = crop(img, self.crop)
+            img = img_crop(img, self.crop)
         print("[DEBUG]: Image is %s=", img.shape)
         img = np.clip(
             img.astype(np.int16) - median_image,
@@ -615,7 +615,7 @@ class connection:
         self.conn.close()
 
 
-def crop(img, crop_size):
+def img_crop(img, crop_size):
     """Crop down to a square image at the center of the image."""
     row, col = img.shape
     rcenter = int(row / 2)
