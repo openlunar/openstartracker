@@ -132,7 +132,7 @@ if __name__ == '__main__':
 
     system("mv " + sys.argv[1] + "/checksum.txt " + sys.argv[1] +
            "/calibration_data/checksum.txt")
-    year = time.strftime("%Y")
+    year = int(time.strftime("%Y"))
     stardb = getstardb(year=year)
 
     astrometry_results = {}
