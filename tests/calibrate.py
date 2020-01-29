@@ -11,48 +11,24 @@ from astropy.io import fits
 from scipy import spatial
 
 # Environment variables:
-try:
-    EXPOSURE_TIME = float(environ['EXPOSURE_TIME'])
-except KeyError:
-    EXPOSURE_TIME = 0.05  # s
-try:
-    APERTURE = float(environ['APERTURE'])
-except KeyError:
-    APERTURE = 60.7  # mm
-try:
-    DOUBLE_STAR_PX = float(environ['DOUBLE_STAR_PX'])
-except KeyError:
-    DOUBLE_STAR_PX = 3.5
-    # pixels of seperation needed to distinguish stars from each other
-try:
-    POS_ERR_SIGMA = float(environ['POS_ERR_SIGMA'])
-except KeyError:
-    POS_ERR_SIGMA = 2
+
+EXPOSURE_TIME = float(environ.get('EXPOSURE_TIME', 0.05))  # s
+APERTURE = float(environ.get('APERTURE', 60.7))  # mm
+
+# pixels of seperation needed to distinguish stars from each other
+DOUBLE_STAR_PX = float(environ.get('DOUBLE_STAR_PX', 3.5))
+POS_ERR_SIGMA = float(environ.get('POS_ERR_SIGMA', 2))
 # Check all constellations which fall inside these bounds
 # Note: Increasing this can actualy reduce the probability of finding a match
 # as the true match has to stand out against a larger crowd
 
 
 # NOTE: all of the following options multiply runtime by (N+2)^2
-try:
-    MAX_FALSE_STARS = int(environ['MAX_FALSE_STARS'])
-except KeyError:
-    MAX_FALSE_STARS = 2
-    # max number of objects that can be brighter than the two brightest stars
-if 'MAX_FALSE_STARS' in environ.keys():
-    MAX_FALSE_STARS = int(environ['MAX_FALSE_STARS'])
-else:
-    MAX_FALSE_STARS = 2
-try:
-    DB_REDUNDANCY = int(environ['DB_REDUNDANCY'])
-except KeyError:
-    DB_REDUNDANCY = 1
-    # of the brightest DB_REDUNDANCY+2 stars, we need at least 2
-try:
-    REQUIRED_STARS = int(environ['REQUIRED_STARS'])
-except KeyError:
-    REQUIRED_STARS = 5
-    # How many stars should we try to match?
+MAX_FALSE_STARS = int(environ.get('MAX_FALSE_STARS', 2))
+DB_REDUNDANCY = int(environ.get('DB_REDUNDANCY', 1))
+# of the brightest DB_REDUNDANCY+2 stars, we need at least 2
+REQUIRED_STARS = int(environ.get('REQUIRED_STARS', 5))
+# How many stars should we try to match?
 # For ultrawide fov this may be set to 3 for faster matching
 # For ultranarrow fov, it may be necessary to set this to 5
 # (Also send me an email and we'll talk)
@@ -91,7 +67,8 @@ def getstardb(year=1991.25, filename="hip_main.dat"):
             y = np.sin(np.pi * ra / 180.0) * cosdec
             z = np.sin(np.pi * dec / 180.0)
         except ValueError:
-            print("[DEBUG] Error reading star id %s". hip_id)
+            print("[DEBUG] Error reading star id %s", hip_id)
+            continue
         try:
             f6 = int(fields[6])  # field 6 = Coarse variability flag
         except ValueError:
@@ -161,7 +138,7 @@ if __name__ == '__main__':
                       i['field_y'],
                       i['index_x'],
                       i['index_y']] + angles2xyz(i['index_ra'],
-                     i['index_dec'])
+                                                 i['index_dec'])
                      for i in hdulist[1].data])
 
     # Use only values below the median for variance calculation.
